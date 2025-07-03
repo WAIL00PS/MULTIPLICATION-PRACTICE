@@ -60,8 +60,15 @@
         font-family: monospace;
       }
 
+      .completion-message {
+        text-align: center;
+        color: var(--accent-color);
+        font-size: 1.1rem;
+        min-height: 1.5rem;
+        margin-bottom: 1rem;
+      }
+
       .question-container {
-        margin: 1rem 0;
         text-align: center;
       }
 
@@ -77,11 +84,13 @@
         color: var(--accent-color);
         height: 3.5rem;
         opacity: 0;
-        transition: opacity 0.3s ease;
+        transform: scale(0.5);
+        transition: all 0.3s ease;
       }
 
       .answer.show {
         opacity: 1;
+        transform: scale(1);
       }
 
       .btn {
@@ -154,13 +163,14 @@
     <div class="container">
       <h1><b>MULTIPLICATION PRACTICE</b></h1>
       <div class="timer" id="timer">00:00</div>
+      <div class="completion-message" id="completion-message"></div>
       <div class="question-container">
         <div class="question" id="question"></div>
         <div class="answer" id="answer"></div>
       </div>
       <button class="btn" id="show-answer">Show Answer</button>
       <div class="stats">
-        <div>Question: <span id="counter">1</span></div>
+        <div>Question: <span id="counter">1</span>/100</div>
         <div>Range: 1×1 to 10×10</div>
       </div>
     </div>
@@ -169,9 +179,10 @@
     <script>
       // Configuration
       const config = {
-        maxMultiplier: 10,
-        showTime: 1500, // 1.5 seconds
-        animationDelay: 300,
+        showTime: 1000,
+        minNumber: 1,
+        maxNumber: 10,
+        totalQuestions: 100,
       };
 
       // DOM elements
@@ -180,73 +191,158 @@
       const showAnswerBtn = document.getElementById("show-answer");
       const counterEl = document.getElementById("counter");
       const timerEl = document.getElementById("timer");
+      const completionMsg = document.getElementById("completion-message");
 
       // State
       let questionCount = 1;
-      let currentQuestion = generateQuestion();
-      let startTime = Date.now();
+      let usedQuestions = new Set();
+      let currentQuestion;
+      let startTime;
       let timerInterval;
+      let sessionStartTime;
+      let sessionTimerInterval;
+      let totalTime = 0;
 
-      // Initialize
-      displayQuestion();
-      startTimer();
+      // Generate a unique question that hasn't been used yet
+      function generateUniqueQuestion() {
+        if (
+          usedQuestions.size >=
+          (config.maxNumber - config.minNumber + 1) ** 2
+        ) {
+          return null;
+        }
 
-      // Timer function
-      function startTimer() {
-        timerInterval = setInterval(updateTimer, 1000);
-      }
+        let a, b, questionKey;
+        do {
+          a =
+            Math.floor(
+              Math.random() * (config.maxNumber - config.minNumber + 1)
+            ) + config.minNumber;
+          b =
+            Math.floor(
+              Math.random() * (config.maxNumber - config.minNumber + 1)
+            ) + config.minNumber;
+          questionKey = `${a}×${b}`;
+        } while (usedQuestions.has(questionKey));
 
-      function updateTimer() {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        const minutes = Math.floor(elapsed / 60)
-          .toString()
-          .padStart(2, "0");
-        const seconds = (elapsed % 60).toString().padStart(2, "0");
-        timerEl.textContent = `${minutes}:${seconds}`;
-      }
-
-      // Generate random multiplication question (1-10)
-      function generateQuestion() {
-        const a = Math.floor(Math.random() * config.maxMultiplier) + 1;
-        const b = Math.floor(Math.random() * config.maxMultiplier) + 1;
+        usedQuestions.add(questionKey);
         return {
           text: `${a} × ${b}`,
           answer: a * b,
         };
       }
 
-      // Display current question
+      // Format time
+      function formatTime(seconds) {
+        const mins = Math.floor(seconds / 60)
+          .toString()
+          .padStart(2, "0");
+        const secs = (seconds % 60).toString().padStart(2, "0");
+        return `${mins}:${secs}`;
+      }
+
+      // Reset timer
+      function resetTimer() {
+        clearInterval(timerInterval);
+        startTime = Date.now();
+        timerEl.textContent = "00:00";
+        timerInterval = setInterval(updateTimer, 1000);
+      }
+
+      // Get next question
+      function getNextQuestion() {
+        if (questionCount > config.totalQuestions) {
+          clearInterval(timerInterval);
+          clearInterval(sessionTimerInterval);
+          const elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
+          totalTime = elapsed;
+          completionMsg.textContent = `Completed all questions in ${formatTime(
+            totalTime
+          )}!`;
+
+          // Disable the button temporarily
+          showAnswerBtn.disabled = true;
+
+          // Start new session after delay
+          setTimeout(() => {
+            startNewSession();
+          }, 3000);
+          return null;
+        }
+        return generateUniqueQuestion();
+      }
+
+      // Start new session
+      function startNewSession() {
+        usedQuestions = new Set();
+        questionCount = 1;
+        sessionStartTime = Date.now();
+        currentQuestion = getNextQuestion();
+        displayQuestion();
+        resetTimer();
+        startSessionTimer();
+        completionMsg.textContent = "";
+        showAnswerBtn.disabled = false;
+      }
+
+      // Display question
       function displayQuestion() {
+        if (!currentQuestion) return;
         questionEl.textContent = currentQuestion.text;
         answerEl.textContent = "";
         answerEl.classList.remove("show");
         counterEl.textContent = questionCount;
       }
 
-      // Show answer with animation
-      function showAnswer() {
-        // Disable button during transition
-        showAnswerBtn.disabled = true;
+      // Question timer
+      function startTimer() {
+        startTime = Date.now();
+        timerInterval = setInterval(updateTimer, 1000);
+      }
 
-        // Show answer with animation
+      function updateTimer() {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        timerEl.textContent = formatTime(elapsed);
+      }
+
+      // Session timer
+      function startSessionTimer() {
+        sessionStartTime = Date.now();
+        sessionTimerInterval = setInterval(updateSessionTimer, 1000);
+      }
+
+      function updateSessionTimer() {
+        const elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
+        timerEl.textContent = formatTime(elapsed);
+      }
+
+      // Show answer
+      function showAnswer() {
+        if (!currentQuestion) return;
+
+        showAnswerBtn.disabled = true;
         answerEl.textContent = currentQuestion.answer;
+
         setTimeout(() => {
           answerEl.classList.add("show");
+          setTimeout(() => {
+            questionCount++;
+            currentQuestion = getNextQuestion();
+            if (currentQuestion) {
+              displayQuestion();
+            }
+            showAnswerBtn.disabled = false;
+          }, config.showTime);
         }, 10);
+      }
 
-        // Prepare next question
-        setTimeout(() => {
-          currentQuestion = generateQuestion();
-          questionCount++;
-          displayQuestion();
-          showAnswerBtn.disabled = false;
-        }, config.showTime);
+      // Initialize
+      function init() {
+        startNewSession();
       }
 
       // Event listeners
       showAnswerBtn.addEventListener("click", showAnswer);
-
-      // Keyboard support
       document.addEventListener("keydown", (e) => {
         if (
           !showAnswerBtn.disabled &&
@@ -255,6 +351,9 @@
           showAnswer();
         }
       });
+
+      // Start the app
+      init();
     </script>
   </body>
 </html>
