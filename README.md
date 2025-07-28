@@ -5,7 +5,7 @@
 A minimal, dark-mode multiplication practice app with automatic progression. Perfect for basic multiplication practice.
 
 ## Live Preview
-➡️ Try it now: https://wail00ps.github.io/MULTIPLICATION-PRACTICE/
+➡️ Try it now:  <a href="https:///wail00ps.github.io/MULTIPLICATION-PRACTICE/" target="_blank"><strong>MULTIPLICATION-PRACTICE</strong></a></p>
 
 ## Features
 - Random multiplication problems (from `1×1` to `10×10`)
@@ -18,4 +18,4 @@ A minimal, dark-mode multiplication practice app with automatic progression. Per
 
 ---
 
-**Vibe Coded by WAI • 2025**
+**Vibe-coded by WAI • 2025**
